@@ -1,0 +1,75 @@
+{% set data = load_setup_py_data() %}
+
+package:
+  name: helloworld
+  version: "{{ data['version'] }}"
+
+source:
+  path: ..
+  string: "{{ data }}"
+
+build:
+  script: "python -m pip install . -vv --no-deps --ignore-installed"
+  include_recipe: True
+  entry_points:
+  {% if data['entry_points'] is defined %}
+  {% for entry_point in data['entry_points']['console_scripts'] %}
+    - {{ entry_point }}
+  {% endfor %}
+  {% endif %}
+
+requirements:
+  hosts:
+    - python {{ python }}
+    - pip
+
+  build:
+  {% if data['setup_requires'] is defined %}
+  {% for set_req in data['setup_requires'] %}
+    - {{ set_req }}
+  {% endfor %}
+  {% endif %}
+
+  run:
+    - python {{ python }}
+  {% if data['install_requires'] is defined %}
+  {% for run_req in data['install_requires'] %}
+    - {{ run_req }}
+  {% endfor %}
+  {% endif %}
+
+test:
+  requires:
+  {% if data['tests_require'] is defined %}
+  {% for test_req in data['tests_require'] %}
+    - {{ test_req}}
+  {% endfor %} 
+  {% endif %} 
+  commands:
+  {% if data['tests_require'] is defined %}
+  {% for pkg in data['packages'] %}
+  {% if 'test' not in pkg and 'pytest' in data['tests_require'] %}
+    - py.test --pyargs {{ pkg }}
+  {% endif %}
+  {% endfor %} 
+  {% endif %}
+  {% if data['entry_points'] is defined %}
+  {% for entry_point in data['entry_points']['console_scripts'] %}
+    - "{{ entry_point.split('=') | first }} --help"
+  {% endfor %}
+  {% endif %}
+
+  imports:
+  {% if data['py_modules'] is defined %}
+  {% for py_module in data['py_modules'] %}
+    - {{ py_module}}
+  {% endfor %}
+  {% endif %}
+  {% if data['ext_modules'] is defined %}
+  {% for ext_module in data['ext_modules'] %}
+    - {{ ext_module.name }}
+  {% endfor %}
+  {% endif %}
+  
+about:
+  summary: {{ data['description'] }}
